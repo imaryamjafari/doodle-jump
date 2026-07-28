@@ -26,20 +26,22 @@ make clean              # cleanup
 ## Controls
 
 - **Left/Right arrows** — move
-- **Mouse** — menu/game-over buttons only
+- **Mouse** — menu/game-over/settings
 
 ## Features
 
 - Infinite procedurally-generated platforms (Normal, Moving, Breakable)
-- Spring boosters with animation
-- Tucked-leg landing pose animation
-- Guaranteed reachability (never unwinnable)
+- Spring boosters
+- Monsters (shootable enemies)
+- Black-holes
+- Guaranteed reachability
 - Camera follows player upward (smooth scrolling)
 - Persistent high score
+- Three levels of difficulty
 
 ## Design
 
-- Small, single-purpose classes: `Camera`, `PlatformSpawner`, `CollisionSystem`
+- Small, single-purpose classes
 - Polymorphic platform types via abstract `Platform` base
 - Template `ResourceManager<T>` with SFML 3 loader traits
 
@@ -50,8 +52,10 @@ doodle-jump/
 ├── include/          # Headers organized by subsystem
 ├── src/              # Implementations mirroring include/
 ├── assets/           # Game sprites
+├── sounds/           # Game sounds
 ├── fonts/            # Game font
 ├── makefile          # Build script
+├── settings.txt      # Difficulty and sound volume
 └── highscore.txt     # Persisted high score
 ```
 
