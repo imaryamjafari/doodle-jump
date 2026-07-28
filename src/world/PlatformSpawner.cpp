@@ -58,7 +58,8 @@ std::unique_ptr<Platform> PlatformSpawner::createPlatform(PlatformType type, con
             const float initialDirection = (std::rand() % 2 == 0) ? 1.f : -1.f;
             return std::make_unique<MovingPlatform>(
                 textures.get(std::string(GameConfig::AssetsFolder) + GameConfig::MovingPlatformTexture),
-                position, GameConfig::PlatformWidth, GameConfig::PlatformHeight, screenWidth, initialDirection);
+                position, GameConfig::PlatformWidth, GameConfig::PlatformHeight, screenWidth, initialDirection,
+                difficulty);
         }
 
         case PlatformType::Breakable:
@@ -98,6 +99,17 @@ void PlatformSpawner::reset()
 
 void PlatformSpawner::generateUpTo(float topWorldY)
 {
+    generateUpToImpl(topWorldY, nullptr);
+}
+
+// New in Phase 2: reporting overload, delegates to the same shared impl.
+void PlatformSpawner::generateUpTo(float topWorldY, std::vector<sf::FloatRect>& newlyGeneratedBounds)
+{
+    generateUpToImpl(topWorldY, &newlyGeneratedBounds);
+}
+
+void PlatformSpawner::generateUpToImpl(float topWorldY, std::vector<sf::FloatRect>* outNewlyGeneratedBounds)
+{
     while (highestGeneratedY > topWorldY)
     {
         const float verticalGap = GameConfig::MinVerticalGapBetweenPlatforms
@@ -114,11 +126,24 @@ void PlatformSpawner::generateUpTo(float topWorldY)
         const PlatformType type = pickNextPlatformType();
         std::unique_ptr<Platform> platform = createPlatform(type, sf::Vector2f(newX, newY));
         maybeAttachSpring(*platform);
+
+        // New in Phase 2: report this platform's bounds to the caller, if
+        // it asked for them, before the unique_ptr is moved into the list.
+        if (outNewlyGeneratedBounds != nullptr)
+        {
+            outNewlyGeneratedBounds->push_back(platform->getBounds());
+        }
+
         platforms.push_back(std::move(platform));
 
         highestGeneratedY = newY;
         lastPlatformWasBreakable = (type == PlatformType::Breakable);
     }
+}
+
+void PlatformSpawner::setDifficulty(Difficulty newDifficulty)
+{
+    difficulty = newDifficulty;
 }
 
 void PlatformSpawner::updateAll(float deltaTime)
@@ -154,4 +179,16 @@ sf::FloatRect PlatformSpawner::getFirstPlatformBounds() const
         return sf::FloatRect({0.f, 0.f}, {0.f, 0.f});
 
     return platforms.front()->getBounds();
+}
+
+// New in Phase 2.
+std::vector<sf::FloatRect> PlatformSpawner::getAllBounds() const
+{
+    std::vector<sf::FloatRect> bounds;
+    bounds.reserve(platforms.size());
+    for (const auto& platform : platforms)
+    {
+        bounds.push_back(platform->getBounds());
+    }
+    return bounds;
 }

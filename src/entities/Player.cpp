@@ -9,12 +9,40 @@ Player::Player(sf::Texture& leftTexture_, sf::Texture& rightTexture_,
     , rightTexture(rightTexture_)
     , leftTuckedTexture(leftTuckedTexture_)
     , rightTuckedTexture(rightTuckedTexture_)
+    , shootingTexture(nullptr)       // New in Phase 2: this overload has no shooting pose
+    , shootingTuckedTexture(nullptr) // New in Phase 2
     , sprite(rightTexture_)
     , velocity(0.f, 0.f)
     , facingDirection(FacingDirection::Right)
     , legsTucked(false)
     , legsTuckedTimeRemaining(0.f)
     , score(0.f)
+    , shooting(false) // New in Phase 2
+{
+    refreshSprite();
+    sprite.setPosition(startPosition);
+}
+
+// New in Phase 2: constructor overload that also wires up the shooting-pose
+// textures. Delegates to the same member layout as the original
+// constructor, only adding the two shooting textures.
+Player::Player(sf::Texture& leftTexture_, sf::Texture& rightTexture_,
+               sf::Texture& leftTuckedTexture_, sf::Texture& rightTuckedTexture_,
+               sf::Texture& shootingTexture_, sf::Texture& shootingTuckedTexture_,
+               const sf::Vector2f& startPosition)
+    : leftTexture(leftTexture_)
+    , rightTexture(rightTexture_)
+    , leftTuckedTexture(leftTuckedTexture_)
+    , rightTuckedTexture(rightTuckedTexture_)
+    , shootingTexture(&shootingTexture_)
+    , shootingTuckedTexture(&shootingTuckedTexture_)
+    , sprite(rightTexture_)
+    , velocity(0.f, 0.f)
+    , facingDirection(FacingDirection::Right)
+    , legsTucked(false)
+    , legsTuckedTimeRemaining(0.f)
+    , score(0.f)
+    , shooting(false)
 {
     refreshSprite();
     sprite.setPosition(startPosition);
@@ -120,6 +148,11 @@ void Player::setVelocityX(float vx)
     velocity.x = vx;
 }
 
+bool Player::isLegsTucked() const
+{
+    return legsTucked;
+}
+
 bool Player::isMovingDownward() const
 {
     return velocity.y > 0.f;
@@ -150,11 +183,55 @@ void Player::addScoreFromClimb(float pixelsClimbed)
     }
 }
 
+// ---- New in Phase 2: shooting ----
+
+void Player::setShooting(bool shooting_)
+{
+    if (shooting != shooting_)
+    {
+        shooting = shooting_;
+        refreshSprite();
+    }
+}
+
+bool Player::isShooting() const
+{
+    return shooting;
+}
+
+sf::Vector2f Player::getMuzzlePosition() const
+{
+    // Fixed point at the horizontal center, near the top of the sprite,
+    // independent of facing direction or jump/fall state — bullets always
+    // originate from the same relative spot on the player's body.
+    const sf::FloatRect bounds = getBounds();
+    return sf::Vector2f(bounds.position.x + bounds.size.x / 2.f, bounds.position.y);
+}
+
+// New in Phase 2.
+void Player::setShrinkFactor(float factor)
+{
+    const sf::Texture& currentTexture = sprite.getTexture();
+    const sf::Vector2u textureSize = currentTexture.getSize();
+    if (textureSize.x > 0 && textureSize.y > 0)
+    {
+        const float clampedFactor = std::max(factor, 0.f);
+        sprite.setScale({
+            (GameConfig::PlayerWidth / static_cast<float>(textureSize.x)) * clampedFactor,
+            (GameConfig::PlayerHeight / static_cast<float>(textureSize.y)) * clampedFactor});
+    }
+}
+
 void Player::refreshSprite()
 {
     sf::Texture* chosenTexture = nullptr;
 
-    if (facingDirection == FacingDirection::Left)
+    // New in Phase 2
+    if (shooting && shootingTexture != nullptr && shootingTuckedTexture != nullptr)
+    {
+        chosenTexture = legsTucked ? shootingTuckedTexture : shootingTexture;
+    }
+    else if (facingDirection == FacingDirection::Left)
     {
         chosenTexture = legsTucked ? &leftTuckedTexture : &leftTexture;
     }
@@ -163,7 +240,15 @@ void Player::refreshSprite()
         chosenTexture = legsTucked ? &rightTuckedTexture : &rightTexture;
     }
 
-    sprite.setTexture(*chosenTexture);
+    // Bug fix: setTexture()'s resetRect parameter defaults to false in SFML 3,
+    // meaning the sprite would keep whatever texture rect was set for the
+    // PREVIOUS texture. Since Player swaps between several differently
+    // sized textures (e.g. left_doodle.png at 93x84 vs shooting@pose.png at
+    // 62x60), leaving the old, larger rect applied to a smaller texture
+    // sampled the new texture through stale bounds, producing a visibly
+    // distorted/stretched sprite. Passing resetRect=true fixes this by
+    // always snapping the rect back to the new texture's real size first.
+    sprite.setTexture(*chosenTexture, true);
 
     const sf::Vector2u textureSize = chosenTexture->getSize();
     if (textureSize.x > 0 && textureSize.y > 0)

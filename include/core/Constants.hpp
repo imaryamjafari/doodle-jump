@@ -1,10 +1,11 @@
 #pragma once
+#include "core/Difficulty.hpp"
 
 namespace GameConfig
 {
     // Window
     constexpr unsigned int WindowWidth  = 750;
-    constexpr unsigned int WindowHeight =900;
+    constexpr unsigned int WindowHeight = 900;
     constexpr const char*  WindowTitle  = "Doodle Jump";
     constexpr unsigned int FrameRateLimit = 60;
 
@@ -48,7 +49,9 @@ namespace GameConfig
     constexpr float MaxJumpHeight = (PlayerJumpSpeed * PlayerJumpSpeed) / (2.f * Gravity);
     constexpr float MaxVerticalGapBetweenPlatforms = MaxJumpHeight - (PlayerHeight + PlatformHeight + 5.);
 
-    constexpr float MovingPlatformSpeed = 100.f;       // px / s
+    constexpr float MovingPlatformSpeedEasy = 100.f;       // px / s
+    constexpr float MovingPlatformSpeedMedium = 150.f;       // px / s
+    constexpr float MovingPlatformSpeedHard = 150.f;       // px / s
 
     constexpr int NormalPlatformWeight    = 65;
     constexpr int MovingPlatformWeight    = 20;
@@ -57,17 +60,13 @@ namespace GameConfig
     constexpr float BreakableFallSpeed = 300.f;        // px / s
 
     // Springs
-    constexpr float SpringWidthRatio = 3.f / 7.f;      // spring width relative to platform width
+    constexpr float SpringWidthRatio = 1.f / 2.f;      // spring width relative to platform width
     constexpr float SpringHeight = 25.f;
     constexpr int   SpringSpawnChancePercent = 15;
 
-    // spring_sprite.png contains two frames stacked vertically: the top
-    // portion is the compressed (resting) spring, the bottom portion is the
-    // extended (just-launched) spring. These rects select each frame via
-    // sf::Sprite::setTextureRect.
     constexpr int SpringSheetWidth = 25;
     constexpr int SpringCompressedTop = 0;
-    constexpr int SpringCompressedHeight = 21;
+    constexpr int SpringCompressedHeight = 17;
     constexpr int SpringExtendedTop = 21;
     constexpr int SpringExtendedHeight = 31;
 
@@ -96,4 +95,75 @@ namespace GameConfig
     constexpr float BreakablePlatformDespawnMultiplier = 3.f; // x window height, safely below any camera position
     constexpr int   PercentRollMax = 100;                     // upper bound for a percent-chance dice roll
     constexpr float HudMargin = 10.f;                         // px from the window edge for on-screen score text
+
+    // New assets
+    constexpr const char* BlueMonsterTexture      = "BlueMonster.png";
+    constexpr const char* GreenMonsterTexture     = "green_monster.png";
+    constexpr const char* HoleTexture             = "hole.png";
+    constexpr const char* NoseTexture             = "Nose.png";
+    constexpr const char* ShootingPoseTexture     = "shooting@pose.png";
+    constexpr const char* ShootingPoseTuckedTexture = "shooting@pose_tucked.png";
+    constexpr const char* SettingsButtonTexture   = "Settings_button.png";
+    constexpr const char* BackButtonTexture       = "back_button.png";
+
+    // Sounds
+    constexpr const char* SoundsFolder          = "sounds/";
+    constexpr const char* MainMenuMusicFile     = "MainMenu_Song.flac";
+    constexpr const char* JumpSoundFile         = "Jumping_Sound.wav";
+    constexpr const char* ShootSoundFile        = "Shooting_Sound.wav";
+    constexpr const char* LoseSoundFile         = "Loosing_Sound.wav";
+    constexpr const char* SettingsFile          = "settings.txt";
+
+    constexpr float DefaultVolumePercent = 100.f; // 0-100
+    constexpr Difficulty DefaultDifficulty = Difficulty::Easy;
+
+    // Monsters
+    constexpr float MonsterWidth  = 80.f;
+    constexpr float MonsterHeight = 51.f;
+    constexpr float GreenMonsterHeight = 28.f; // green_monster.png has a flatter native aspect ratio than BlueMonster.png
+    constexpr float MonsterSpeed = 100.f;              // px / s, horizontal patrol speed
+    constexpr int   MonsterSpawnChancePercent = 12;    // % chance a newly generated platform gets a monster nearby
+
+    // Monster health scales with difficulty: harder levels need more bullets.
+    constexpr int MonsterHealthEasy   = 1;
+    constexpr int MonsterHealthMedium = 2;
+    constexpr int MonsterHealthHard   = 2;
+
+    // Monsters/holes must never be generated before the player has had a moment to get moving
+    constexpr float MonsterHoleSpawnDelaySeconds = 3.f;
+    constexpr int AttemptOverlapCheck = 5;
+
+    // applied when the player lands on a monster's back.
+    constexpr float MonsterBounceJumpSpeed = 900.f;
+
+    // Bullets
+    constexpr float NoseWidth  = 15.f;
+    constexpr float NoseHeight = 22.f;
+
+    constexpr float noseOffsetY = 26.f;
+    constexpr float noseOffsetTuckedY = 21.f;
+
+    constexpr float BulletRadius = 6.f;
+    constexpr float BulletSpeed = 1800.f;               // px / s, upward
+
+    constexpr float FireCooldownEasy   = 0.18f;
+    constexpr float FireCooldownMedium = 0.32f;
+    constexpr float FireCooldownHard   = 0.32f;
+
+    // Holes
+    constexpr float HoleSmallSize = 74.f;
+    constexpr float HoleLargeSize = 120.f;
+    constexpr int   HoleSpawnChancePercent = 5; // % chance a newly generated platform gets a hole nearby (Hard only)
+
+    constexpr float HoleSuckDurationSeconds = 1.f; // time for the player to shrink to nothing once caught
+
+    // Shared spawn
+    // Minimum clearance kept between any two world objects (platform,
+    // monster, hole) so nothing overlaps or touches, used by the single
+    // shared overlap-check function all spawners call into.
+    constexpr float MinClearanceBetweenObjects = 12.f;
+
+    // Scoring
+    constexpr const char* HighScoreFileHeader = "EASY MEDIUM HARD";
 }
+

@@ -1,5 +1,4 @@
-# ------------------------------------------------------------------------------
-# Makefile for Simple Doodle Jump (SFML 3)
+# Makefile for Doodle Jump (SFML 3)
 #
 # Designed to be run from Git Bash on Windows with a MinGW-w64 g++ toolchain
 # and SFML 3 installed (headers + libs discoverable by the compiler/linker,
@@ -13,10 +12,15 @@
 # -DSFML_STATIC to CXXFLAGS. If you used the prebuilt "GCC (MinGW)" shared
 # package from sfml-dev.org (the simplest option), the flags below are all
 # you need — remember to copy the SFML .dll files next to the .exe
+#
+# Phase 2 note: -lsfml-audio was added below for sound support (SoundManager,
+# background music, sound effects). If linking statically on Windows, audio
+# additionally needs -lopenal32 and -lFLAC/-lvorbis/-logg (whichever SFML's
+# own build pulled in) per SFML's own dependency list for sfml-audio.
 
 CXX      := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -Iinclude
-LDFLAGS  := -lsfml-graphics -lsfml-window -lsfml-system
+LDFLAGS  := -lsfml-graphics -lsfml-window -lsfml-audio -lsfml-system
 
 SRC_DIR   := src
 BUILD_DIR := build

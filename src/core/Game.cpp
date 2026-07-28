@@ -3,6 +3,7 @@
 #include "states/MenuState.hpp"
 #include "states/PlayState.hpp"
 #include "states/GameOverState.hpp"
+#include "states/SettingsState.hpp" // New in Phase 2
 #include <fstream>
 #include <ctime>
 #include <cstdlib>
@@ -13,12 +14,15 @@ Game::Game()
              sf::Style::Titlebar | sf::Style::Close)
     , pendingState(StateID::Menu)
     , stateChangeRequested(true)
-    , highScore(0.f)
     , lastScore(0.f)
 {
     window.setFramerateLimit(GameConfig::FrameRateLimit);
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
-    loadHighScore();
+
+    // New in Phase 2: HighScoreStore and Settings load themselves from
+    // disk in their own constructors; apply the persisted volume to the
+    // sound manager right away so menu music starts at the right level.
+    soundManager.setVolume(settings.getVolume());
 }
 
 std::unique_ptr<GameState> Game::createState(StateID id)
@@ -28,6 +32,7 @@ std::unique_ptr<GameState> Game::createState(StateID id)
         case StateID::Menu:     return std::make_unique<MenuState>(*this);
         case StateID::Play:     return std::make_unique<PlayState>(*this);
         case StateID::GameOver: return std::make_unique<GameOverState>(*this);
+        case StateID::Settings: return std::make_unique<SettingsState>(*this); // New in Phase 2
     }
     return std::make_unique<MenuState>(*this);
 }
@@ -64,8 +69,6 @@ void Game::run()
         currentState->render(window);
         window.display();
     }
-
-    saveHighScore();
 }
 
 ResourceManager<sf::Texture>& Game::getTextures()
@@ -85,16 +88,14 @@ sf::RenderWindow& Game::getWindow()
 
 float Game::getHighScore() const
 {
-    return highScore;
+    // New in Phase 2: delegates to the per-difficulty store, using
+    // whichever difficulty is currently selected in Settings.
+    return highScores.getHighScore(settings.getDifficulty());
 }
 
 void Game::updateHighScoreIfNeeded(float candidateScore)
 {
-    if (candidateScore > highScore)
-    {
-        highScore = candidateScore;
-        saveHighScore();
-    }
+    highScores.updateIfNeeded(settings.getDifficulty(), candidateScore);
 }
 
 float Game::getLastScore() const
@@ -107,16 +108,14 @@ void Game::setLastScore(float score)
     lastScore = score;
 }
 
-void Game::loadHighScore()
+// ---- New in Phase 2 ----
+
+Settings& Game::getSettings()
 {
-    std::ifstream file(GameConfig::HighScoreFile);
-    if (file.is_open())
-        file >> highScore;
+    return settings;
 }
 
-void Game::saveHighScore() const
+SoundManager& Game::getSoundManager()
 {
-    std::ofstream file(GameConfig::HighScoreFile, std::ios::trunc);
-    if (file.is_open())
-        file << highScore;
+    return soundManager;
 }

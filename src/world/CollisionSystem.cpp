@@ -19,8 +19,11 @@ void CollisionSystem::resolveHorizontal(Player& player, float deltaTime)
     player.wrapAroundScreen(screenWidth);
 }
 
-void CollisionSystem::resolveVertical(Player& player, float deltaTime,
-                                       std::vector<std::unique_ptr<Platform>>& platforms)
+VerticalCollisionOutcome CollisionSystem::resolveVertical(Player& player, float deltaTime,
+                                       std::vector<std::unique_ptr<Platform>>& platforms,
+                                       std::vector<std::unique_ptr<Monster>>& monsters,
+                                       std::vector<std::unique_ptr<Hole>>& holes,
+                                       sf::Vector2f* outCaughtHoleCenter)
 {
     const bool wasMovingDownward = player.isMovingDownward();
 
@@ -47,8 +50,69 @@ void CollisionSystem::resolveVertical(Player& player, float deltaTime,
 
     player.advancePoseTimer(deltaTime);
 
+    // New in Phase 2: holes have the highest collision priority of
+    // anything in the game — checked before springs, platforms, or
+    // monsters, and checked unconditionally (not only while falling),
+    // since simply walking/wrapping into one should be just as fatal as
+    // landing in one. A simple bounding-box overlap is enough; holes don't
+    // need the "crossed the top edge" landing logic that platforms use.
+    const sf::FloatRect playerBoundsForHoles = player.getBounds();
+    for (const auto& holePtr : holes)
+    {
+        if (holePtr->getBounds().findIntersection(playerBoundsForHoles).has_value())
+        {
+            if (outCaughtHoleCenter != nullptr)
+            {
+                *outCaughtHoleCenter = holePtr->getCenter();
+            }
+            return VerticalCollisionOutcome::CaughtByHole;
+        }
+    }
+
+    // monster collisions must be checked every frame regardless of
+    // vertical direction — e.g. flying upward through a monster right
+    // after a spring/platform bounce must still be fatal. Only the
+    // platform/spring "landed on top" logic below is legitimately gated on
+    // "currently moving downward" (Doodle Jump platforms are one-way, you
+    // can't land on one while moving up through it), so the monster check
+    // is pulled out from under that guard and always runs.
+    const sf::FloatRect playerBoundsForMonsters = player.getBounds();
+    for (auto& monsterPtr : monsters)
+    {
+        Monster* monster = monsterPtr.get();
+        const sf::FloatRect monsterBounds = monster->getBounds();
+
+        if (!monsterBounds.findIntersection(playerBoundsForMonsters).has_value())
+        {
+            continue;
+        }
+
+        const float monsterCenterX = playerBoundsForMonsters.position.x + playerBoundsForMonsters.size.x / 2.f;
+        const float feetY = playerBoundsForMonsters.position.y + playerBoundsForMonsters.size.y;
+        const float prevFeetY = feetY - player.getVelocity().y * deltaTime;
+
+        const bool horizontallyOverlapping =
+            monsterCenterX >= monsterBounds.position.x && monsterCenterX <= monsterBounds.position.x + monsterBounds.size.x;
+        const bool landedOnTop =
+            wasMovingDownward && horizontallyOverlapping &&
+            prevFeetY <= monsterBounds.position.y && feetY >= monsterBounds.position.y;
+
+        if (landedOnTop)
+        {
+            attachedBreakingPlatform = nullptr;
+            player.setPosition({playerBoundsForMonsters.position.x, monsterBounds.position.y - playerBoundsForMonsters.size.y});
+            player.jump(GameConfig::MonsterBounceJumpSpeed);
+            player.playLandingPose();
+            return VerticalCollisionOutcome::None;
+        }
+
+        // Any other kind of contact (side, bottom, or hitting it while
+        // moving upward) is instantly fatal.
+        return VerticalCollisionOutcome::KilledByMonster;
+    }
+
     if (!wasMovingDownward && attachedBreakingPlatform == nullptr)
-        return;
+        return VerticalCollisionOutcome::None;
 
     const sf::FloatRect playerBounds = player.getBounds();
     const float playerFeetY = playerBounds.position.y + playerBounds.size.y;
@@ -79,7 +143,7 @@ void CollisionSystem::resolveVertical(Player& player, float deltaTime,
                 player.jump(GameConfig::SpringJumpSpeed);
                 player.playLandingPose();
                 spring->triggerLaunch();
-                return;
+                return VerticalCollisionOutcome::None;
             }
         }
 
@@ -107,7 +171,47 @@ void CollisionSystem::resolveVertical(Player& player, float deltaTime,
                 attachedBreakingPlatform = breakable;
                 player.setVelocityY(breakable->getFallSpeed());
             }
-            return;
+            return VerticalCollisionOutcome::None;
+        }
+    }
+
+    return VerticalCollisionOutcome::None;
+}
+
+// New in Phase 2: bullets only ever interact with monsters. Each bullet
+// that overlaps a monster applies one hit to it and is itself removed
+// immediately (a bullet is consumed on impact, per the requirements), so
+// neither list can grow without bound.
+void CollisionSystem::resolveBulletsAgainstMonsters(std::vector<std::unique_ptr<Bullet>>& bullets,
+                                                     std::vector<std::unique_ptr<Monster>>& monsters)
+{
+    for (auto bulletIt = bullets.begin(); bulletIt != bullets.end(); )
+    {
+        const sf::FloatRect bulletBounds = (*bulletIt)->getBounds();
+        bool bulletConsumed = false;
+
+        for (auto& monsterPtr : monsters)
+        {
+            if (!monsterPtr->isAlive())
+            {
+                continue;
+            }
+
+            if (bulletBounds.findIntersection(monsterPtr->getBounds()).has_value())
+            {
+                monsterPtr->applyBulletHit();
+                bulletConsumed = true;
+                break;
+            }
+        }
+
+        if (bulletConsumed)
+        {
+            bulletIt = bullets.erase(bulletIt);
+        }
+        else
+        {
+            ++bulletIt;
         }
     }
 }

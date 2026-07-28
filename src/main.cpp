@@ -4,7 +4,7 @@
 _____________Naming Convention Guideline_____________
 Functions: snakeCase
 Variables: snakeCase
-Constants: snakeCase
+Constants: PascalCase
 Classes:   PascalCase
 */
 

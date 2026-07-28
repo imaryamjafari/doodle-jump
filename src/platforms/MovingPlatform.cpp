@@ -1,16 +1,32 @@
 #include "platforms/MovingPlatform.hpp"
 #include "core/Constants.hpp"
 
+namespace
+{
+    float speedForDifficulty(Difficulty difficulty)
+    {
+        switch (difficulty)
+        {
+            case Difficulty::Easy:   return GameConfig::MovingPlatformSpeedEasy;
+            case Difficulty::Medium: return GameConfig::MovingPlatformSpeedMedium;
+            case Difficulty::Hard:   return GameConfig::MovingPlatformSpeedHard;
+        }
+        return GameConfig::MovingPlatformSpeedEasy;
+    }
+}
+
 MovingPlatform::MovingPlatform(sf::Texture& texture, const sf::Vector2f& position,
-                                 float width, float height, float screenWidth_, float initialDirection)
+                                 float width, float height, float screenWidth_, float initialDirection,
+                                 Difficulty difficulty)
     : Platform(texture, position, width, height, PlatformType::Moving)
     , screenWidth(screenWidth_)
     , direction(initialDirection >= 0.f ? 1.f : -1.f)
+    , speed(speedForDifficulty(difficulty))
 {}
 
 void MovingPlatform::updateMotion(float deltaTime)
 {
-    sprite.move({direction * GameConfig::MovingPlatformSpeed * deltaTime, 0.f});
+    sprite.move({direction * speed * deltaTime, 0.f});
 
     const sf::FloatRect bounds = sprite.getGlobalBounds();
     if (bounds.position.x <= 0.f)

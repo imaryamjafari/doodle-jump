@@ -8,6 +8,7 @@ MenuState::MenuState(Game& game_)
     , startButtonSprite(game.getTextures().get(std::string(GameConfig::AssetsFolder) + GameConfig::StartButtonTexture))
     , titleText(game.getFonts().get(std::string(GameConfig::FontsFolder) + GameConfig::FontFile))
     , highScoreText(game.getFonts().get(std::string(GameConfig::FontsFolder) + GameConfig::FontFile))
+    , settingsButtonSprite(game.getTextures().get(std::string(GameConfig::AssetsFolder) + GameConfig::SettingsButtonTexture)) // New in Phase 2
 {
     const sf::Vector2u buttonTextureSize = startButtonSprite.getTexture().getSize();
     startButtonSprite.setScale({
@@ -16,6 +17,15 @@ MenuState::MenuState(Game& game_)
     startButtonSprite.setPosition({
         GameConfig::WindowWidth / 2.f - GameConfig::ButtonWidth / 2.f,
         GameConfig::WindowHeight / 2.f});
+
+    // New in Phase 2: Settings button, stacked directly below Start.
+    const sf::Vector2u settingsTextureSize = settingsButtonSprite.getTexture().getSize();
+    settingsButtonSprite.setScale({
+        static_cast<float>(GameConfig::ButtonWidth) / static_cast<float>(settingsTextureSize.x),
+        static_cast<float>(GameConfig::ButtonHeight) / static_cast<float>(settingsTextureSize.y)});
+    settingsButtonSprite.setPosition({
+        GameConfig::WindowWidth / 2.f - GameConfig::ButtonWidth / 2.f,
+        GameConfig::WindowHeight / 2.f + GameConfig::ButtonHeight + GameConfig::ButtonSpacing});
 
     titleText.setString("Doodle Jump");
     titleText.setCharacterSize(GameConfig::TitleFontSize);
@@ -27,6 +37,9 @@ MenuState::MenuState(Game& game_)
     highScoreText.setCharacterSize(GameConfig::ScoreFontSize);
     highScoreText.setFillColor(sf::Color(30, 130, 60));
     highScoreText.setStyle(sf::Text::Bold);
+
+    // New in Phase 2: background music plays in Menu/Settings only.
+    game.getSoundManager().playMusic();
 }
 
 void MenuState::handleEvent(const sf::Event& event)
@@ -40,6 +53,11 @@ void MenuState::handleEvent(const sf::Event& event)
             if (startButtonSprite.getGlobalBounds().contains(clickPosition))
             {
                 game.requestStateChange(StateID::Play);
+            }
+            // New in Phase 2.
+            else if (settingsButtonSprite.getGlobalBounds().contains(clickPosition))
+            {
+                game.requestStateChange(StateID::Settings);
             }
         }
     }
@@ -63,4 +81,5 @@ void MenuState::render(sf::RenderWindow& window)
     window.draw(titleText);
     window.draw(highScoreText);
     window.draw(startButtonSprite);
+    window.draw(settingsButtonSprite); // New in Phase 2
 }

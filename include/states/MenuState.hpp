@@ -17,4 +17,8 @@ private:
     sf::Sprite startButtonSprite;
     sf::Text titleText;
     sf::Text highScoreText;
+
+    // New in Phase 2: opens the Settings state; positioned below the
+    // Start button.
+    sf::Sprite settingsButtonSprite;
 };
